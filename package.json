@@ -1,0 +1,27 @@
+{
+  "name": "api-miniblog",
+  "version": "1.0.0",
+  "description": "API REST para gestionar autores y posts de un blog (Proyecto Integrador M2 - Henry)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "vitest",
+    "db:test": "node src/db/test-connection.js"
+  },
+  "keywords": [],
+  "author": "Rodrigo Romero",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
+  }
+}
