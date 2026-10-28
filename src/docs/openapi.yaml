@@ -1,0 +1,497 @@
+openapi: 3.1.1
+info:
+  title: API MiniBlog
+  version: 1.0.0
+  description: |
+    API REST para gestionar autores y posts de un blog.
+    Proyecto Integrador M2 - Henry. Hecha con Node.js, Express y PostgreSQL.
+
+    Todos los errores se devuelven con el formato `{ "error": "mensaje", "status": 400 }`.
+  contact:
+    name: Rodrigo Romero
+
+servers:
+  - url: http://localhost:3000
+    description: Desarrollo local
+
+tags:
+  - name: Autores
+    description: CRUD de autores
+  - name: Posts
+    description: CRUD de posts
+  - name: Health
+    description: Estado del servidor
+
+paths:
+  /health:
+    get:
+      summary: Verificar que el servidor está funcionando
+      tags:
+        - Health
+      responses:
+        '200':
+          description: El servidor está funcionando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /authors:
+    get:
+      summary: Listar todos los autores
+      tags:
+        - Autores
+      responses:
+        '200':
+          description: Lista de autores ordenados por id
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Author'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+    post:
+      summary: Crear un autor
+      tags:
+        - Autores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorInput'
+            example:
+              name: Juan Pérez
+              email: juan@example.com
+              bio: Desarrollador backend
+      responses:
+        '201':
+          description: Autor creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '409':
+          $ref: '#/components/responses/EmailRepetido'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+  /authors/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+
+    get:
+      summary: Obtener un autor por id
+      tags:
+        - Autores
+      responses:
+        '200':
+          description: Autor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+    put:
+      summary: Actualizar un autor
+      description: Solo se actualizan los campos que se envían en el body. Los demás quedan igual.
+      tags:
+        - Autores
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorUpdate'
+            example:
+              bio: Bio actualizada
+      responses:
+        '200':
+          description: Autor actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '409':
+          $ref: '#/components/responses/EmailRepetido'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+    delete:
+      summary: Eliminar un autor
+      description: Al eliminar un autor también se eliminan todos sus posts (ON DELETE CASCADE).
+      tags:
+        - Autores
+      responses:
+        '204':
+          description: Autor eliminado (sin contenido)
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+  /posts:
+    get:
+      summary: Listar todos los posts
+      tags:
+        - Posts
+      responses:
+        '200':
+          description: Lista de posts ordenados por id
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+    post:
+      summary: Crear un post
+      tags:
+        - Posts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostInput'
+            example:
+              title: Mi primer post
+              content: Hola mundo
+              author_id: 1
+              published: false
+      responses:
+        '201':
+          description: Post creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          description: El autor indicado en author_id no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: El autor no existe
+                status: 404
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+  /posts/author/{authorId}:
+    get:
+      summary: Listar los posts de un autor con los datos del autor
+      tags:
+        - Posts
+      parameters:
+        - name: authorId
+          in: path
+          required: true
+          description: Id del autor
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        '200':
+          description: Posts del autor (puede ser una lista vacía si el autor no tiene posts)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostConAutor'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+  /posts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+
+    get:
+      summary: Obtener un post por id
+      tags:
+        - Posts
+      responses:
+        '200':
+          description: Post encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+    put:
+      summary: Actualizar un post
+      description: Solo se actualizan los campos que se envían en el body. El autor del post no se puede cambiar.
+      tags:
+        - Posts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostUpdate'
+            example:
+              published: true
+      responses:
+        '200':
+          description: Post actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+    delete:
+      summary: Eliminar un post
+      tags:
+        - Posts
+      responses:
+        '204':
+          description: Post eliminado (sin contenido)
+        '400':
+          $ref: '#/components/responses/DatosInvalidos'
+        '404':
+          $ref: '#/components/responses/NoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErrorServidor'
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: Id del recurso (entero positivo)
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+  schemas:
+    Author:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Ana García
+        email:
+          type: string
+          format: email
+          example: ana@example.com
+        bio:
+          type: [string, 'null']
+          example: Desarrolladora full-stack apasionada por Node.js
+        created_at:
+          type: string
+          format: date-time
+
+    AuthorInput:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Nombre del autor (no puede estar vacío)
+        email:
+          type: string
+          format: email
+          maxLength: 150
+          description: Email del autor (tiene que ser único)
+        bio:
+          type: string
+          description: Biografía (opcional)
+
+    AuthorUpdate:
+      type: object
+      description: Todos los campos son opcionales
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 150
+        bio:
+          type: string
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Introducción a Node.js
+        content:
+          type: string
+          example: Node.js es un runtime de JavaScript...
+        author_id:
+          type: integer
+          example: 1
+        published:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+
+    PostInput:
+      type: object
+      required:
+        - title
+        - content
+        - author_id
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: string
+        author_id:
+          type: integer
+          minimum: 1
+          description: Id de un autor que exista
+        published:
+          type: boolean
+          default: false
+
+    PostUpdate:
+      type: object
+      description: Todos los campos son opcionales
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        content:
+          type: string
+        published:
+          type: boolean
+
+    PostConAutor:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Introducción a Node.js
+        content:
+          type: string
+          example: Node.js es un runtime de JavaScript...
+        published:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        author_id:
+          type: integer
+          example: 1
+        author_name:
+          type: string
+          example: Ana García
+        author_email:
+          type: string
+          example: ana@example.com
+        author_bio:
+          type: [string, 'null']
+          example: Desarrolladora full-stack apasionada por Node.js
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Autor no encontrado
+        status:
+          type: integer
+          example: 404
+
+  responses:
+    DatosInvalidos:
+      description: Datos inválidos (falta un campo, formato incorrecto o id que no es número)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: El nombre es requerido
+            status: 400
+    NoEncontrado:
+      description: El recurso no existe
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Autor no encontrado
+            status: 404
+    EmailRepetido:
+      description: El email ya está registrado por otro autor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: El email ya está registrado
+            status: 409
+    ErrorServidor:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Error interno del servidor
+            status: 500

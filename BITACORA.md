@@ -212,3 +212,29 @@ npm test
 Para estar seguro de que los tests no tocan la base de desarrollo, inserté un autor "marca" en `miniblog`, corrí los tests y seguía estando. Después lo borré.
 
 Los casos que pide la guía están cubiertos: crear author, obtener author, crear post y eliminar recurso inexistente.
+
+---
+
+## Paso 7 - Documentación OpenAPI (Swagger)
+
+**Qué hice:**
+
+- `src/docs/openapi.yaml`: la documentación de la API en formato OpenAPI 3.1, con:
+  - Los 11 endpoints de authors y posts, más `/health`.
+  - Para cada uno: qué hace, qué body recibe (con un ejemplo) y todas las respuestas posibles (200, 201, 204, 400, 404, 409, 500).
+  - Esquemas reutilizables en `components/schemas`: `Author`, `AuthorInput`, `AuthorUpdate`, `Post`, `PostInput`, `PostUpdate`, `PostConAutor` y `Error`.
+  - Respuestas de error reutilizables en `components/responses` (`DatosInvalidos`, `NoEncontrado`, `EmailRepetido`, `ErrorServidor`) para no repetir lo mismo en cada endpoint.
+  - El parámetro `id` definido una sola vez en `components/parameters` y referenciado con `$ref`.
+- En `app.js` serví la documentación con `swagger-ui-express` y `yamljs` en la ruta `/api-docs`.
+
+**Cómo verla:**
+
+```bash
+npm run dev
+```
+
+Y abrir en el navegador: `http://localhost:3000/api-docs`. Desde ahí se puede probar cada endpoint con el botón **"Try it out"**.
+
+**Validación:** validé el archivo con `npx @redocly/cli lint`. Con las reglas recomendadas marca errores de "security-defined" porque la API no tiene autenticación (la consigna no la pide). Validándolo solo contra la especificación OpenAPI da **"Your API description is valid"**.
+
+Cuando haga el deploy en Railway voy a agregar la URL pública en `servers`.
