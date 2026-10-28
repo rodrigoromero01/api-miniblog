@@ -85,3 +85,42 @@ npm run db:test
 
 - No me acordaba la contraseña del usuario `postgres`. La reseteé cambiando temporalmente `pg_hba.conf` a `trust`, reiniciando el servicio y corriendo `ALTER USER postgres PASSWORD '...'`. Después restauré el archivo original.
 - Primero cambié las líneas de `replication` en vez de las de `host all all` y por eso seguía pidiendo clave.
+
+---
+
+## Paso 3 - Endpoints con arrays en memoria
+
+Como recomienda la guía, primero hice todos los endpoints sin base de datos, usando arrays. Así pruebo que las rutas y los códigos HTTP están bien antes de meter SQL.
+
+**Qué hice:**
+
+- `src/data/memoria.js`: los arrays `authors` y `posts` con los mismos datos del seed. Los puse en un archivo aparte porque los controllers de posts necesitan buscar autores.
+- `src/controllers/authorsController.js` y `postsController.js`: la lógica de cada endpoint.
+- `src/routes/authorsRouter.js`, `postsRouter.js` e `indexRouter.js`: definen las rutas.
+- En `app.js` agregué `app.use(router)`.
+
+**Endpoints:**
+
+| Método | Ruta | Qué hace | Códigos |
+|---|---|---|---|
+| GET | /authors | lista autores | 200 |
+| GET | /authors/:id | detalle de autor | 200, 400, 404 |
+| POST | /authors | crea autor | 201, 400, 409 |
+| PUT | /authors/:id | actualiza autor | 200, 400, 404, 409 |
+| DELETE | /authors/:id | borra autor (y sus posts) | 204, 404 |
+| GET | /posts | lista posts | 200 |
+| GET | /posts/:id | detalle de post | 200, 400, 404 |
+| GET | /posts/author/:authorId | posts de un autor con los datos del autor | 200, 404 |
+| POST | /posts | crea post | 201, 400, 404 |
+| PUT | /posts/:id | actualiza post | 200, 400, 404 |
+| DELETE | /posts/:id | borra post | 204, 404 |
+
+**Cosas que aprendí / decidí:**
+
+- En `postsRouter` la ruta `/author/:authorId` tiene que ir **antes** que `/:id`. Si no, Express toma "author" como si fuera un id.
+- Para email repetido devuelvo **409 Conflict** (como en el ejemplo de clase), porque el dato es válido pero choca con otro que ya existe.
+- Cuando borro un autor también borro sus posts, para que se comporte igual que el `ON DELETE CASCADE` de la base.
+- Los `DELETE` devuelven **204** sin cuerpo.
+- En el `PUT` solo cambio los campos que vienen en el body (uso `??` para dejar el valor anterior si no viene).
+
+**Pruebas:** probé los 11 endpoints con casos buenos y con errores (id inexistente, id que no es número, nombre vacío, email repetido, autor que no existe, borrar dos veces lo mismo). Todos devolvieron el código esperado. Al borrar el autor 1 también desaparecieron sus posts (quedaron los posts 2 y 4).
