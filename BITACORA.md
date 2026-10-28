@@ -176,3 +176,39 @@ Hasta ahora cada controller tenía su propio `try/catch` con `res.status(500)` y
 **Problema que encontré:** en Express 5, si el request no trae body, `req.body` es `undefined` y al hacer `const { name } = req.body` explotaba con error 500. Lo solucioné con `req.body || {}`.
 
 **Pruebas:** además de repetir todas las pruebas anteriores (siguen dando lo mismo), probé casos nuevos: nombre numérico, nombre con solo espacios, email sin formato, bio numérica, nombre de 101 caracteres, POST sin body, JSON mal escrito, ids negativos o con decimales, `author_id: "abc"`, `published: "si"`, título como array y una ruta inexistente. Todos devuelven 400 o 404 con un mensaje claro, ninguno da 500.
+
+---
+
+## Paso 6 - Tests con vitest y supertest
+
+**Base de datos para tests:** los tests borran y vuelven a crear las tablas antes de cada test, así que si usaban la misma base que desarrollo me iban a borrar los datos. Por eso creé una base aparte:
+
+```bash
+psql -U postgres -c "CREATE DATABASE miniblog_test;"
+```
+
+y agregué en el `.env` la variable `TEST_DATABASE_URL` apuntando a `miniblog_test` (también está en `.env.example`).
+
+**Qué hice:**
+
+- `vitest.config.js`:
+  - Carga el `.env` y, solo para los tests, cambia `DATABASE_URL` por `TEST_DATABASE_URL`. Así la app no se entera y usa la base de test.
+  - Si falta `TEST_DATABASE_URL` tira error y no corre nada (para no borrar la base de desarrollo por accidente).
+  - `fileParallelism: false` → los archivos de test corren de a uno, porque comparten la misma base.
+- `tests/helpers.js`: función `resetearBase()` que corre `setup.sql` y `seed.sql`. Se llama en el `beforeEach`, así cada test arranca con los mismos 3 autores y 5 posts.
+- `tests/authors.test.js` (15 tests): listar, detalle, crear, nombre faltante/vacío, email inválido, email repetido (409), sin body, actualizar, 404, eliminar (y que se borren sus posts), eliminar inexistente.
+- `tests/posts.test.js` (17 tests): listar, detalle, posts de un autor con JOIN, crear, sin título / contenido / author_id, autor inexistente, `published` inválido, actualizar, eliminar, eliminar inexistente, `/health` y ruta inexistente.
+- `tests/validators.test.js` (12 tests): tests unitarios de las funciones de `validators.js`, sin servidor ni base.
+- En `package.json`: `npm test` corre los tests una vez (`vitest run`) y `npm run test:watch` los deja corriendo mientras programo.
+
+**Cómo correrlos:**
+
+```bash
+npm test
+```
+
+**Resultado:** `Test Files 3 passed (3) | Tests 44 passed (44)`
+
+Para estar seguro de que los tests no tocan la base de desarrollo, inserté un autor "marca" en `miniblog`, corrí los tests y seguía estando. Después lo borré.
+
+Los casos que pide la guía están cubiertos: crear author, obtener author, crear post y eliminar recurso inexistente.
