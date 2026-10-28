@@ -149,3 +149,30 @@ Reemplacé los arrays por consultas reales a la base.
 - Ya no hace falta borrar los posts a mano cuando borro un autor, lo hace el `ON DELETE CASCADE`.
 
 **Pruebas:** corrí las mismas pruebas que en el paso 3, ahora contra la base real, y dieron los mismos códigos. Para dejar la base limpia después de probar vuelvo a correr `setup.sql` y `seed.sql`.
+
+---
+
+## Paso 5 - Validaciones y manejo de errores
+
+Hasta ahora cada controller tenía su propio `try/catch` con `res.status(500)` y validaciones con `if` repetidos. Lo ordené como vimos en clase.
+
+**Qué hice:**
+
+- `src/utils/errors.js`: funciones `badRequest`, `notFound`, `conflict`, que crean un `Error` con su `statusCode`.
+- `src/utils/validators.js`: validadores que devuelven un mensaje de error o `null` si está todo bien:
+  - `validarId` → tiene que ser un entero positivo (rechaza `abc`, `-1`, `1.5`)
+  - `validarTexto` → requerido, que sea string, que no esté vacío y un largo máximo
+  - `validarNombre` (máx. 100) y `validarEmail` (máx. 150 + formato con regex)
+  - `validarBio` (opcional, pero si viene tiene que ser texto)
+  - `validarPublished` (opcional, pero si viene tiene que ser `true` o `false`)
+- `src/middlewares/errorHandler.js`: middleware global. Todos los errores llegan acá con `next(error)` y responde siempre con el mismo formato: `{ "error": "...", "status": 400 }`.
+  - Traduce los errores de Postgres: `23505` → 409, `23503` → 404, `22P02` → 400.
+  - Si el JSON del body está mal escrito responde 400 "El body no es un JSON válido".
+  - Si es un 500 no muestra el mensaje real del error al cliente (solo lo loguea en consola).
+- `rutaNoEncontrada`: responde 404 para rutas que no existen.
+- En `app.js` los dos middlewares van **al final**, después de las rutas.
+- Los controllers ahora usan `next(badRequest(...))` / `next(notFound(...))` y en el `catch` solo hacen `next(error)`.
+
+**Problema que encontré:** en Express 5, si el request no trae body, `req.body` es `undefined` y al hacer `const { name } = req.body` explotaba con error 500. Lo solucioné con `req.body || {}`.
+
+**Pruebas:** además de repetir todas las pruebas anteriores (siguen dando lo mismo), probé casos nuevos: nombre numérico, nombre con solo espacios, email sin formato, bio numérica, nombre de 101 caracteres, POST sin body, JSON mal escrito, ids negativos o con decimales, `author_id: "abc"`, `published: "si"`, título como array y una ruta inexistente. Todos devuelven 400 o 404 con un mensaje claro, ninguno da 500.

@@ -5,114 +5,94 @@ import {
   getAuthorByIdService,
   updateAuthorService,
 } from "../services/authorsService.js";
+import { badRequest, notFound } from "../utils/errors.js";
+import { validarBio, validarEmail, validarId, validarNombre } from "../utils/validators.js";
 
-export const getAllAuthors = async (req, res) => {
+export const getAllAuthors = async (req, res, next) => {
   try {
     const authors = await getAllAuthorsService();
     res.status(200).json(authors);
   } catch (error) {
-    console.error("Error obteniendo autores:", error);
-    res.status(500).json({ error: "Error obteniendo autores" });
+    next(error);
   }
 };
 
-export const getAuthorById = async (req, res) => {
+export const getAuthorById = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const errorId = validarId(req.params.id);
+    if (errorId) return next(badRequest(errorId));
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "El id debe ser un número" });
-    }
-
-    const author = await getAuthorByIdService(id);
-
-    if (!author) {
-      return res.status(404).json({ error: "Autor no encontrado" });
-    }
+    const author = await getAuthorByIdService(req.params.id);
+    if (!author) return next(notFound("Autor no encontrado"));
 
     res.status(200).json(author);
   } catch (error) {
-    console.error("Error obteniendo autor:", error);
-    res.status(500).json({ error: "Error obteniendo autor" });
+    next(error);
   }
 };
 
-export const createAuthor = async (req, res) => {
+export const createAuthor = async (req, res, next) => {
   try {
-    const { name, email, bio } = req.body;
+    const { name, email, bio } = req.body || {};
 
-    if (!name || name.trim() === "") {
-      return res.status(400).json({ error: "El nombre es requerido" });
-    }
+    const errorNombre = validarNombre(name);
+    if (errorNombre) return next(badRequest(errorNombre));
 
-    if (!email || email.trim() === "") {
-      return res.status(400).json({ error: "El email es requerido" });
-    }
+    const errorEmail = validarEmail(email);
+    if (errorEmail) return next(badRequest(errorEmail));
 
+    const errorBio = validarBio(bio);
+    if (errorBio) return next(badRequest(errorBio));
+
+    // si el email ya existe la base tira error 23505 y el errorHandler responde 409
     const newAuthor = await createAuthorService(name.trim(), email.trim(), bio);
 
     res.status(201).json(newAuthor);
   } catch (error) {
-    console.error("Error creando autor:", error);
-
-    // 23505 = violación de UNIQUE (email repetido)
-    if (error.code === "23505") {
-      return res.status(409).json({ error: "El email ya está registrado" });
-    }
-
-    res.status(500).json({ error: "Error creando autor" });
+    next(error);
   }
 };
 
-export const updateAuthor = async (req, res) => {
+export const updateAuthor = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const errorId = validarId(req.params.id);
+    if (errorId) return next(badRequest(errorId));
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "El id debe ser un número" });
+    const { name, email, bio } = req.body || {};
+
+    // en el PUT los campos son opcionales, pero si vienen tienen que ser válidos
+    if (name !== undefined) {
+      const errorNombre = validarNombre(name);
+      if (errorNombre) return next(badRequest(errorNombre));
     }
 
-    const { name, email, bio } = req.body;
-
-    if (name !== undefined && name.trim() === "") {
-      return res.status(400).json({ error: "El nombre no puede estar vacío" });
+    if (email !== undefined) {
+      const errorEmail = validarEmail(email);
+      if (errorEmail) return next(badRequest(errorEmail));
     }
 
-    const author = await updateAuthorService(id, name, email, bio);
+    const errorBio = validarBio(bio);
+    if (errorBio) return next(badRequest(errorBio));
 
-    if (!author) {
-      return res.status(404).json({ error: "Autor no encontrado" });
-    }
+    const author = await updateAuthorService(req.params.id, name?.trim(), email?.trim(), bio);
+    if (!author) return next(notFound("Autor no encontrado"));
 
     res.status(200).json(author);
   } catch (error) {
-    console.error("Error actualizando autor:", error);
-
-    if (error.code === "23505") {
-      return res.status(409).json({ error: "El email ya está registrado" });
-    }
-
-    res.status(500).json({ error: "Error actualizando autor" });
+    next(error);
   }
 };
 
-export const deleteAuthor = async (req, res) => {
+export const deleteAuthor = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const errorId = validarId(req.params.id);
+    if (errorId) return next(badRequest(errorId));
 
-    if (isNaN(id)) {
-      return res.status(400).json({ error: "El id debe ser un número" });
-    }
-
-    const borrado = await deleteAuthorService(id);
-
-    if (!borrado) {
-      return res.status(404).json({ error: "Autor no encontrado" });
-    }
+    const borrado = await deleteAuthorService(req.params.id);
+    if (!borrado) return next(notFound("Autor no encontrado"));
 
     res.status(204).send();
   } catch (error) {
-    console.error("Error eliminando autor:", error);
-    res.status(500).json({ error: "Error eliminando autor" });
+    next(error);
   }
 };

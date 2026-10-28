@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import router from "./routes/indexRouter.js";
+import { errorHandler, rutaNoEncontrada } from "./middlewares/errorHandler.js";
 
 const app = express();
 
@@ -14,5 +15,9 @@ app.get("/health", (req, res) => {
     status: "ok",
   });
 });
+
+// estos dos van al final, despues de todas las rutas
+app.use(rutaNoEncontrada);
+app.use(errorHandler);
 
 export default app;
