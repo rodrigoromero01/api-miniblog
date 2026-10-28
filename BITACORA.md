@@ -124,3 +124,28 @@ Como recomienda la guía, primero hice todos los endpoints sin base de datos, us
 - En el `PUT` solo cambio los campos que vienen en el body (uso `??` para dejar el valor anterior si no viene).
 
 **Pruebas:** probé los 11 endpoints con casos buenos y con errores (id inexistente, id que no es número, nombre vacío, email repetido, autor que no existe, borrar dos veces lo mismo). Todos devolvieron el código esperado. Al borrar el autor 1 también desaparecieron sus posts (quedaron los posts 2 y 4).
+
+---
+
+## Paso 4 - Conectar los endpoints a PostgreSQL
+
+Reemplacé los arrays por consultas reales a la base.
+
+**Qué hice:**
+
+- `src/services/authorsService.js` y `src/services/postsService.js`: acá están **todas** las consultas SQL. Los controllers ya no tocan la base directamente, solo llaman a los services (routes → controllers → services → db).
+- Todas las consultas son **parametrizadas** (`$1`, `$2`, ...). Nunca armo el SQL concatenando strings, así se evita SQL injection.
+- Los controllers ahora son `async` y tienen `try/catch`.
+- Borré `src/data/memoria.js` porque ya no se usa.
+
+**Detalles:**
+
+- En los `UPDATE` uso `COALESCE($1, name)`: si el campo no viene en el body mando `null` y la base deja el valor que ya tenía.
+- Los `DELETE` usan `RETURNING id` y miro `rowCount` para saber si existía (si es 0 → 404).
+- `GET /posts/author/:authorId` usa un `JOIN` entre posts y authors y devuelve cada post con `author_name`, `author_email` y `author_bio`. Antes me fijo que el autor exista para devolver 404 si no.
+- Ya no busco emails repetidos a mano: dejo que la base lo controle con el `UNIQUE` y atrapo el error. Los códigos de error de Postgres que uso:
+  - `23505` → violación de UNIQUE (email repetido) → respondo **409**
+  - `23503` → violación de FOREIGN KEY (el autor no existe) → respondo **404**
+- Ya no hace falta borrar los posts a mano cuando borro un autor, lo hace el `ON DELETE CASCADE`.
+
+**Pruebas:** corrí las mismas pruebas que en el paso 3, ahora contra la base real, y dieron los mismos códigos. Para dejar la base limpia después de probar vuelvo a correr `setup.sql` y `seed.sql`.
