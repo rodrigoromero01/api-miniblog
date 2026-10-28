@@ -238,3 +238,21 @@ Y abrir en el navegador: `http://localhost:3000/api-docs`. Desde ahí se puede p
 **Validación:** validé el archivo con `npx @redocly/cli lint`. Con las reglas recomendadas marca errores de "security-defined" porque la API no tiene autenticación (la consigna no la pide). Validándolo solo contra la especificación OpenAPI da **"Your API description is valid"**.
 
 Cuando haga el deploy en Railway voy a agregar la URL pública en `servers`.
+
+---
+
+## Paso 8 - GitHub y README
+
+**GitHub:** creé el repositorio público con `gh repo create api-miniblog --public --source . --push`. Antes de subirlo revisé que el `.env` no estuviera en ningún commit (`git log --all --name-only`).
+
+- Repo: https://github.com/rodrigoromero01/api-miniblog
+
+**README.md:** lo escribí con todo lo que pide el entregable:
+
+- Descripción del proyecto y tecnologías.
+- Estructura de carpetas y de la base de datos.
+- Tabla de endpoints con sus códigos de respuesta y validaciones.
+- Pasos para correrlo en local (instalar, crear las bases, `.env`, `setup.sql` + `seed.sql`, levantar el servidor).
+- Cómo correr los tests y cómo ver la documentación en `/api-docs`.
+- Registro del uso de IA.
+- La sección de deploy en Railway la completo cuando haga el deploy.
