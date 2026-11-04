@@ -115,14 +115,12 @@ El archivo está en [`src/docs/openapi.yaml`](src/docs/openapi.yaml). Con el ser
 
 La consigna pedía Railway, pero mi período de prueba había vencido y me autorizaron a usar Render.
 
-1. Agregué [`render.yaml`](render.yaml), que crea el servicio de la API (`npm install`, `npm start`, health check en `/health`) y una base PostgreSQL.
-2. En Render: **New → Blueprint**, elegí el repo y deployé.
-3. La base arranca vacía, así que corrí los scripts desde mi PC con la External Database URL:
+El repo tiene un [`render.yaml`](render.yaml) que define la API (`npm install`, `npm start`, health check en `/health`) y la base PostgreSQL. Desde ahí, en Render hice:
 
-   ```bash
-   psql "<External Database URL>?sslmode=require" -f src/db/setup.sql
-   psql "<External Database URL>?sslmode=require" -f src/db/seed.sql
-   ```
+1. **New → Blueprint**, conecté GitHub, elegí el repo y le di a **Deploy Blueprint**.
+2. Cuando los dos servicios quedaron en verde, entré a **miniblog-db → Connect** y copié la **External Database URL**.
+3. Con esa URL corrí `setup.sql` y `seed.sql` desde mi PC (`psql "<URL>?sslmode=require" -f src/db/setup.sql`, y lo mismo con el seed).
+4. Probé `/health`, `/authors` y `/api-docs` en la URL pública.
 
 Cada `git push` a `main` vuelve a deployar solo.
 
