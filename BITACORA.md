@@ -256,3 +256,35 @@ Cuando haga el deploy en Railway voy a agregar la URL pública en `servers`.
 - Cómo correr los tests y cómo ver la documentación en `/api-docs`.
 - Registro del uso de IA.
 - La sección de deploy en Railway la completo cuando haga el deploy.
+
+---
+
+## Paso 9 - Deploy
+
+### Intento en Railway
+
+La consigna pide Railway. Desde la terminal (estaba logueado con la CLI de Railway) intenté crear el proyecto con `railway init`, pero respondió:
+
+```
+Your trial has expired. Please select a plan to continue using Railway.
+```
+
+El período de prueba gratis de mi cuenta ya había vencido, así que para seguir tenía que pagar un plan. Revisé también la página de estado (status.railway.com) por si era una caída del servicio, pero estaba todo operativo: el problema era solo el trial.
+
+Antes de eso agregué `"engines": { "node": ">=20" }` en el `package.json` para que la plataforma use una versión de Node compatible con Express 5.
+
+### Deploy en Render
+
+Decidí hacer el deploy en **Render**, que tiene plan gratis.
+
+- Creé `render.yaml` (Blueprint): define el web service `api-miniblog` (Node, `npm install` / `npm start`, health check en `/health`) y la base `miniblog-db` (PostgreSQL). La variable `DATABASE_URL` la completa Render sola con la URL interna de la base (`fromDatabase`).
+- En el dashboard de Render: **New → Blueprint** → elegí el repo → **Deploy Blueprint**.
+- La API levantó (`/health` → 200) pero `/authors` daba **500**: la base estaba vacía.
+- Copié la **External Database URL** en mi `.env` local como `RENDER_DATABASE_URL` y corrí `setup.sql` y `seed.sql` contra esa base con `psql` (con `?sslmode=require`, porque Render pide SSL desde afuera).
+- Probé los 26 casos de siempre contra `https://api-miniblog.onrender.com` y dieron igual que en local. `/api-docs` también funciona. Después volví a cargar los datos de ejemplo.
+- Agregué la URL de producción en `servers` del `openapi.yaml`, así en Swagger se puede elegir probar contra producción o local.
+- Completé la sección de deploy del README (URLs, variables de entorno, URL interna vs externa, pasos y limitaciones).
+
+**URL pública:** https://api-miniblog.onrender.com
+
+**Limitaciones del plan gratis:** la API se duerme después de 15 minutos sin uso y la base gratis vence a los 30 días.

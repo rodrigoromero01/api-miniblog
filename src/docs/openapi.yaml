@@ -11,6 +11,8 @@ info:
     name: Rodrigo Romero
 
 servers:
+  - url: https://api-miniblog.onrender.com
+    description: Producción (Render)
   - url: http://localhost:3000
     description: Desarrollo local
 

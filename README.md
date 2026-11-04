@@ -5,8 +5,10 @@ API REST para gestionar **autores** y **posts** de un blog, hecha con **Node.js*
 Proyecto Integrador del Módulo 2 de Henry. La consigna plantea que soy desarrollador backend junior en *DevSpark*, una startup que necesita una API simple y documentada para su servicio de contenidos **MiniBlog**, que después va a usar el equipo de frontend.
 
 - **Repositorio:** https://github.com/rodrigoromero01/api-miniblog
-- **API en producción (Railway):** _pendiente_
-- **Documentación (Swagger):** _pendiente_ (en local: http://localhost:3000/api-docs)
+- **API en producción (Render):** https://api-miniblog.onrender.com
+- **Documentación (Swagger):** https://api-miniblog.onrender.com/api-docs (en local: http://localhost:3000/api-docs)
+
+> La API está en el plan gratis de Render: si nadie la usa por 15 minutos se "duerme" y el primer request tarda alrededor de un minuto en responder.
 
 ---
 
@@ -19,7 +21,7 @@ Proyecto Integrador del Módulo 2 de Henry. La consigna plantea que soy desarrol
 5. [Cómo ejecutarlo en local](#cómo-ejecutarlo-en-local)
 6. [Tests](#tests)
 7. [Documentación OpenAPI](#documentación-openapi)
-8. [Deploy en Railway](#deploy-en-railway)
+8. [Deploy en Render](#deploy-en-render)
 9. [Registro del uso de IA](#registro-del-uso-de-ia)
 
 ---
@@ -33,7 +35,7 @@ Proyecto Integrador del Módulo 2 de Henry. La consigna plantea que soy desarrol
 | Variables de entorno | `dotenv` |
 | Tests | `vitest` + `supertest` |
 | Documentación | OpenAPI 3.1 + `swagger-ui-express` + `yamljs` |
-| Deploy | Railway |
+| Deploy | Render (Blueprint con `render.yaml`) |
 
 ---
 
@@ -280,9 +282,75 @@ Abrir **http://localhost:3000/api-docs**. Ahí están todos los endpoints con su
 
 ---
 
-## Deploy en Railway
+## Deploy en Render
 
-_Esta sección la completo cuando haga el deploy._
+> **¿Por qué Render y no Railway?** La consigna pide Railway, pero cuando quise crear el proyecto el período de prueba gratis de mi cuenta ya había vencido (`Your trial has expired. Please select a plan to continue using Railway.`). Por eso hice el deploy en **Render**, que funciona de la misma forma: toma el código de GitHub, lo instala, lo arranca y le da una base PostgreSQL. El código no cambia nada, solo dónde se publica.
+
+### URLs
+
+| Qué | URL |
+|---|---|
+| API (URL pública) | https://api-miniblog.onrender.com |
+| Health check | https://api-miniblog.onrender.com/health |
+| Documentación Swagger | https://api-miniblog.onrender.com/api-docs |
+
+### Cómo está armado
+
+El deploy está definido en el archivo [`render.yaml`](render.yaml) (un *Blueprint* de Render), que crea dos cosas:
+
+1. **`api-miniblog`** → un *Web Service* de Node.js (plan free).
+   - Build: `npm install`
+   - Start: `npm start`
+   - Health check: `/health` (Render lo usa para saber si la app levantó bien)
+2. **`miniblog-db`** → una base **PostgreSQL** (plan free), con base `miniblog` y usuario `miniblog`.
+
+```
+GitHub (código) ──git push──▶ Render
+                               ├── api-miniblog (Node + Express)
+                               │        │ URL interna
+                               │        ▼
+                               └── miniblog-db (PostgreSQL)
+```
+
+### Variables de entorno
+
+| Variable | Dónde se configura | Valor |
+|---|---|---|
+| `DATABASE_URL` | La pone Render sola (sale del `render.yaml` con `fromDatabase`) | La **URL interna** de `miniblog-db` |
+| `PORT` | La pone Render sola | El puerto donde tiene que escuchar la app |
+
+No hace falta cargar nada a mano: el código ya usa `process.env.DATABASE_URL` y `process.env.PORT`.
+
+### URL interna vs URL externa de la base
+
+Render da dos URLs para la misma base (se ven en **miniblog-db → Connect**):
+
+- **Internal Database URL** → solo funciona **dentro de Render**. Es la que usa la API para conectarse: es más rápida y no pasa por internet. Es la que va en `DATABASE_URL`.
+- **External Database URL** → sirve para conectarse **desde afuera**, por ejemplo desde mi PC con `psql` o pgAdmin. La usé solo para crear las tablas. Necesita SSL (`?sslmode=require`).
+
+> Ninguna de las dos URLs se sube a GitHub porque tienen la contraseña de la base.
+
+### Pasos que seguí
+
+1. Subí el archivo `render.yaml` al repositorio.
+2. En https://dashboard.render.com: **New → Blueprint**, conecté GitHub y elegí el repo `api-miniblog`.
+3. Render leyó el `render.yaml`, mostró los dos recursos y le di **Deploy Blueprint**.
+4. Cuando la API levantó, `/health` respondía bien pero `/authors` daba 500, porque la base de Render estaba vacía.
+5. Copié la **External Database URL** de `miniblog-db` y corrí los scripts desde mi PC:
+
+   ```bash
+   psql "<External Database URL>?sslmode=require" -f src/db/setup.sql
+   psql "<External Database URL>?sslmode=require" -f src/db/seed.sql
+   ```
+
+6. Probé todos los endpoints contra la URL pública y dieron los mismos resultados que en local. Después volví a correr `setup.sql` y `seed.sql` para dejar los datos de ejemplo.
+
+Cada vez que hago `git push` a `main`, Render vuelve a hacer el deploy automáticamente.
+
+### Limitaciones del plan gratis
+
+- La API se duerme después de 15 minutos sin uso; el primer request después de eso tarda alrededor de un minuto.
+- La base PostgreSQL gratis **vence a los 30 días** de creada (después hay 14 días de gracia y se borra). Si vence, se puede crear una nueva y volver a correr `setup.sql` y `seed.sql`.
 
 ---
 
@@ -308,6 +376,8 @@ Trabajé paso a paso, siguiendo el orden que recomienda la guía del proyecto. E
 | Problema con PostgreSQL | No me acordaba la contraseña del usuario `postgres`. | Me explicó cómo resetearla editando temporalmente `pg_hba.conf`, y cuando cambié las líneas equivocadas (las de `replication`) detectó el error revisando el archivo. |
 | Tests | Usar una base aparte para los tests. | Propuso crear `miniblog_test` porque los tests borran las tablas, para no perder los datos de desarrollo. |
 | GitHub | _"Creá el repo, que quede público."_ | Antes de subir revisó que el `.env` y la contraseña no estuvieran en ningún commit. |
+| Deploy | Intentar el deploy en Railway. | Al crear el proyecto Railway respondió que mi trial había vencido. Me explicó las opciones y decidí pasar a Render. |
+| Deploy | _"Cambio de planes, vamos a deployar en Render."_ | Armó el `render.yaml` (API + PostgreSQL), me explicó las limitaciones del plan gratis, corrió los scripts SQL en la base de Render y probó todos los endpoints en producción. |
 
 ### Qué aprendí / qué verifiqué yo
 
