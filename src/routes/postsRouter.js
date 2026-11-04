@@ -11,7 +11,8 @@ import {
 const postsRouter = Router();
 
 postsRouter.get("/", getAllPosts);
-// esta ruta va antes que /:id para que "author" no se tome como un id
+// las rutas fijas van antes que /:id. Esta tiene dos tramos (/author/1) asi que
+// /:id no la agarra igual, pero una ruta como /posts/author si se tomaria como id
 postsRouter.get("/author/:authorId", getPostsByAuthor);
 postsRouter.get("/:id", getPostById);
 postsRouter.post("/", createPost);

@@ -387,7 +387,7 @@ Trabajé paso a paso, siguiendo el orden que recomienda la guía del proyecto. E
 - Revisé que la estructura fuera la misma que vimos en clase y que entiendo cada capa (routes, controllers, services).
 - Probé los endpoints y corrí los tests en mi máquina.
 - Cosas que entendí gracias a los problemas que aparecieron:
-  - En Express el orden de las rutas importa (`/author/:authorId` tiene que ir antes que `/:id`).
+  - En Express el orden de las rutas importa: se usa la primera que coincide. Un parámetro como `/:id` atrapa un solo tramo de la URL, así que tomaría `/posts/author` como si `author` fuera un id, pero no `/posts/author/1`.
   - En Express 5, si no viene body, `req.body` es `undefined`.
   - Los códigos de error de PostgreSQL (`23505` = UNIQUE, `23503` = FOREIGN KEY) se pueden usar para responder 409 y 404.
   - Las consultas tienen que ser parametrizadas (`$1`, `$2`) para evitar SQL injection.

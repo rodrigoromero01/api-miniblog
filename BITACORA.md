@@ -117,7 +117,7 @@ Como recomienda la guía, primero hice todos los endpoints sin base de datos, us
 
 **Cosas que aprendí / decidí:**
 
-- En `postsRouter` la ruta `/author/:authorId` tiene que ir **antes** que `/:id`. Si no, Express toma "author" como si fuera un id.
+- En `postsRouter` puse la ruta `/author/:authorId` **antes** que `/:id`, pensando que si no Express tomaba "author" como si fuera un id. *(Después lo probé y no era necesario en este caso: ver Paso 10.)*
 - Para email repetido devuelvo **409 Conflict** (como en el ejemplo de clase), porque el dato es válido pero choca con otro que ya existe.
 - Cuando borro un autor también borro sus posts, para que se comporte igual que el `ON DELETE CASCADE` de la base.
 - Los `DELETE` devuelven **204** sin cuerpo.
@@ -309,3 +309,13 @@ Releí todo el código comparándolo con los ejemplos de clase y simplifiqué do
 - En el `errorHandler` traducía el error `22P02` de Postgres (dato con formato inválido, por ejemplo un id `"abc"`). Pero `validarId` ya frena esos casos con un 400 antes de llegar a la base, así que ese `if` nunca se usaba. Lo borré.
 
 **Pruebas:** `npm test` → 44 de 44, y las pruebas de endpoints dan los mismos códigos que antes.
+
+**3. Corrección sobre el orden de las rutas**
+
+- En el paso 3 anoté que `/posts/author/:authorId` tenía que ir sí o sí antes que `/:id`. Lo probé invirtiendo el orden en un script con supertest:
+  ```
+  /posts/author/1  -> llega a /author/:authorId igual
+  /posts/author    -> lo agarra /:id con id = "author"
+  ```
+- Un parámetro como `:id` atrapa **un solo tramo** de la URL (lo que hay entre dos `/`). `/posts/author/1` tiene dos tramos, así que `/:id` no la puede agarrar. Solo pasaría con una ruta fija de un tramo, como `/posts/author`.
+- La dejé antes igual, porque es buena costumbre poner las rutas fijas antes que las que tienen parámetros, y corregí el comentario del router y el README.
