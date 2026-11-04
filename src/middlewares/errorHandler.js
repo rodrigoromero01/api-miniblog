@@ -10,9 +10,6 @@ export function errorHandler(err, req, res, next) {
   } else if (err.code === "23503") {
     statusCode = 404;
     message = "El autor no existe";
-  } else if (err.code === "22P02") {
-    statusCode = 400;
-    message = "Algún dato tiene un formato inválido";
   }
 
   // JSON mal escrito en el body
