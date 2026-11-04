@@ -1,140 +1,101 @@
 # API MiniBlog
 
-API REST para gestionar **autores** y **posts** de un blog, hecha con **Node.js**, **Express** y **PostgreSQL**.
+Este es mi Proyecto Integrador del Módulo 2 de Henry: una API REST para manejar **autores** y **posts** de un blog, hecha con **Node.js**, **Express** y **PostgreSQL**.
 
-Proyecto Integrador del Módulo 2 de Henry. La consigna plantea que soy desarrollador backend junior en *DevSpark*, una startup que necesita una API simple y documentada para su servicio de contenidos **MiniBlog**, que después va a usar el equipo de frontend.
+La idea de la consigna es que trabajo como backend junior en *DevSpark*, una startup que está armando **MiniBlog**. El equipo de frontend ya tenía las pantallas pero no había backend, así que la API tenía que permitir crear, leer, actualizar y borrar autores y posts, con validaciones, tests y documentación para que la puedan usar.
 
-- **Repositorio:** https://github.com/rodrigoromero01/api-miniblog
-- **API en producción (Render):** https://api-miniblog.onrender.com
-- **Documentación (Swagger):** https://api-miniblog.onrender.com/api-docs (en local: http://localhost:3000/api-docs)
+- **Repo:** https://github.com/rodrigoromero01/api-miniblog
+- **API online (Render):** https://api-miniblog.onrender.com
+- **Documentación (Swagger):** https://api-miniblog.onrender.com/api-docs
 
-> La API está en el plan gratis de Render: si nadie la usa por 15 minutos se "duerme" y el primer request tarda alrededor de un minuto en responder.
-
----
-
-## Índice
-
-1. [Tecnologías](#tecnologías)
-2. [Estructura del proyecto](#estructura-del-proyecto)
-3. [Base de datos](#base-de-datos)
-4. [Endpoints](#endpoints)
-5. [Cómo ejecutarlo en local](#cómo-ejecutarlo-en-local)
-6. [Tests](#tests)
-7. [Documentación OpenAPI](#documentación-openapi)
-8. [Deploy en Render](#deploy-en-render)
-9. [Registro del uso de IA](#registro-del-uso-de-ia)
+> Ojo: está en el plan gratis de Render, así que si nadie la usa por 15 minutos se "duerme" y el primer request tarda casi un minuto en responder. Después anda normal.
 
 ---
 
-## Tecnologías
+## Con qué lo hice
 
-| Para qué | Qué usé |
-|---|---|
-| Servidor | Node.js + Express 5 |
-| Base de datos | PostgreSQL + `pg` (consultas SQL directas, sin ORM) |
-| Variables de entorno | `dotenv` |
-| Tests | `vitest` + `supertest` |
-| Documentación | OpenAPI 3.1 + `swagger-ui-express` + `yamljs` |
-| Deploy | Render (Blueprint con `render.yaml`) |
+- **Node.js + Express 5** para el servidor
+- **PostgreSQL** con la librería **`pg`** (consultas SQL directas, sin ORM)
+- **dotenv** para las variables de entorno
+- **vitest + supertest** para los tests
+- **OpenAPI + swagger-ui-express + yamljs** para la documentación
+- **Render** para el deploy
 
 ---
 
-## Estructura del proyecto
+## Cómo está organizado
+
+Seguí la misma estructura que vimos en clase:
 
 ```
-api-miniblog/
-├── src/
-│   ├── app.js                 # configura express, rutas, swagger y errores
-│   ├── index.js               # levanta el servidor
-│   ├── routes/                # definen los endpoints
-│   ├── controllers/           # validan el request y arman la respuesta
-│   ├── services/              # consultas SQL (parametrizadas)
-│   ├── middlewares/
-│   │   └── errorHandler.js    # manejo global de errores + 404 de rutas
-│   ├── utils/
-│   │   ├── errors.js          # badRequest, notFound, conflict
-│   │   └── validators.js      # validarNombre, validarEmail, validarId, ...
-│   ├── db/
-│   │   ├── config.js          # Pool de conexión a PostgreSQL
-│   │   ├── test-connection.js # script para probar la conexión
-│   │   ├── setup.sql          # crea las tablas
-│   │   ├── seed.sql           # datos de ejemplo
-│   │   └── pruebas.sql        # consultas CRUD para probar a mano
-│   └── docs/
-│       └── openapi.yaml       # documentación de la API
-├── tests/                     # tests con vitest + supertest
-├── .env.example
-├── BITACORA.md                # lo que fui haciendo paso a paso
-└── README.md
+src/
+  app.js              -> configura express, las rutas, swagger y el manejo de errores
+  index.js            -> levanta el servidor
+  routes/             -> los endpoints
+  controllers/        -> validan lo que llega y arman la respuesta
+  services/           -> las consultas SQL
+  middlewares/        -> errorHandler (todos los errores terminan acá)
+  utils/              -> errores (badRequest, notFound...) y validaciones
+  db/
+    config.js         -> conexión a PostgreSQL con Pool
+    test-connection.js
+    setup.sql         -> crea las tablas
+    seed.sql          -> datos de ejemplo
+    pruebas.sql       -> consultas que usé para probar a mano
+  docs/openapi.yaml   -> documentación
+tests/                -> tests
+BITACORA.md           -> lo que fui haciendo en cada paso
 ```
 
-El flujo de un request es: **routes → controllers → services → base de datos**. Si algo falla, el controller llama a `next(error)` y el `errorHandler` responde con el código HTTP que corresponde.
+Un request pasa así: **route → controller → service → base de datos**. Si algo sale mal, el controller hace `next(error)` y el `errorHandler` responde con el código que corresponde.
 
 ---
 
 ## Base de datos
 
-Dos tablas con una relación **uno a muchos**: un autor puede tener muchos posts.
+Tengo dos tablas: `authors` y `posts`. Un autor puede tener muchos posts (relación uno a muchos).
 
-**authors**
+**authors:** `id` (PK), `name` (obligatorio), `email` (obligatorio y único), `bio` (opcional), `created_at`.
 
-| Columna | Tipo | Detalle |
-|---|---|---|
-| id | SERIAL | PK |
-| name | VARCHAR(100) | NOT NULL |
-| email | VARCHAR(150) | NOT NULL, UNIQUE |
-| bio | TEXT | opcional |
-| created_at | TIMESTAMPTZ | DEFAULT NOW() |
+**posts:** `id` (PK), `title` (obligatorio), `content` (obligatorio), `author_id` (obligatorio, FK a `authors.id`), `published` (por defecto `false`), `created_at`.
 
-**posts**
-
-| Columna | Tipo | Detalle |
-|---|---|---|
-| id | SERIAL | PK |
-| title | VARCHAR(200) | NOT NULL |
-| content | TEXT | NOT NULL |
-| author_id | INTEGER | NOT NULL, FK → authors.id, **ON DELETE CASCADE** |
-| published | BOOLEAN | DEFAULT FALSE |
-| created_at | TIMESTAMPTZ | DEFAULT NOW() |
-
-Además hay un índice en `posts.author_id` para que sea rápido buscar los posts de un autor. Si se borra un autor, sus posts se borran automáticamente (`ON DELETE CASCADE`).
+La FK tiene `ON DELETE CASCADE`: si borro un autor, se borran solos todos sus posts. También le puse un índice a `posts.author_id` porque se buscan posts por autor.
 
 ---
 
 ## Endpoints
 
-| Método | Ruta | Descripción | Respuestas |
+| Método | Ruta | Qué hace | Respuestas |
 |---|---|---|---|
-| GET | `/authors` | Listar autores | 200 |
-| GET | `/authors/:id` | Detalle de un autor | 200, 400, 404 |
-| POST | `/authors` | Crear autor | 201, 400, 409 |
-| PUT | `/authors/:id` | Actualizar autor | 200, 400, 404, 409 |
-| DELETE | `/authors/:id` | Eliminar autor (y sus posts) | 204, 400, 404 |
-| GET | `/posts` | Listar posts | 200 |
-| GET | `/posts/:id` | Detalle de un post | 200, 400, 404 |
-| GET | `/posts/author/:authorId` | Posts de un autor con los datos del autor | 200, 400, 404 |
-| POST | `/posts` | Crear post | 201, 400, 404 |
-| PUT | `/posts/:id` | Actualizar post | 200, 400, 404 |
-| DELETE | `/posts/:id` | Eliminar post | 204, 400, 404 |
-| GET | `/health` | Ver si el servidor está funcionando | 200 |
+| GET | `/authors` | lista los autores | 200 |
+| GET | `/authors/:id` | trae un autor | 200, 400, 404 |
+| POST | `/authors` | crea un autor | 201, 400, 409 |
+| PUT | `/authors/:id` | actualiza un autor | 200, 400, 404, 409 |
+| DELETE | `/authors/:id` | borra un autor (y sus posts) | 204, 400, 404 |
+| GET | `/posts` | lista los posts | 200 |
+| GET | `/posts/:id` | trae un post | 200, 400, 404 |
+| GET | `/posts/author/:authorId` | posts de un autor, con los datos del autor | 200, 400, 404 |
+| POST | `/posts` | crea un post | 201, 400, 404 |
+| PUT | `/posts/:id` | actualiza un post | 200, 400, 404 |
+| DELETE | `/posts/:id` | borra un post | 204, 400, 404 |
+| GET | `/health` | para ver si el servidor anda | 200 |
 
-**Validaciones:**
+**Validaciones que hice:**
 
-- `name` es obligatorio, tiene que ser texto, no puede estar vacío (máx. 100 caracteres).
-- `email` es obligatorio, con formato válido y **único** (si se repite → `409`).
-- `title`, `content` y `author_id` son obligatorios para crear un post.
-- `author_id` tiene que ser de un autor que exista (si no → `404`).
+- `name` es obligatorio y no puede estar vacío.
+- `email` es obligatorio, tiene que tener formato de email y no se puede repetir (si se repite devuelve **409**).
+- Para crear un post hacen falta `title`, `content` y `author_id`, y el autor tiene que existir (si no, **404**).
 - `published` es opcional, pero si viene tiene que ser `true` o `false`.
-- Los ids tienen que ser números enteros positivos (si no → `400`).
-- En los `PUT` todos los campos son opcionales: solo se cambia lo que se manda.
+- Los ids tienen que ser números (si mandás `/authors/abc` devuelve **400**).
+- En los `PUT` se cambia solo lo que mandás, lo demás queda igual.
 
-Todos los errores tienen el mismo formato:
+Todos los errores vuelven con el mismo formato:
 
 ```json
 { "error": "Autor no encontrado", "status": 404 }
 ```
 
-**Ejemplo - crear un post:**
+Ejemplo para crear un post:
 
 ```http
 POST /posts
@@ -143,35 +104,19 @@ Content-Type: application/json
 {
   "title": "Mi primer post",
   "content": "Hola mundo",
-  "author_id": 1,
-  "published": false
+  "author_id": 1
 }
 ```
 
-Respuesta `201`:
-
-```json
-{
-  "id": 6,
-  "title": "Mi primer post",
-  "content": "Hola mundo",
-  "author_id": 1,
-  "published": false,
-  "created_at": "2026-10-28T19:12:11.611Z"
-}
-```
+Devuelve `201` con el post creado (con su `id`, `published: false` y `created_at`).
 
 ---
 
-## Cómo ejecutarlo en local
+## Cómo correrlo en local
 
-### Requisitos
+**Necesitás:** Node.js 20 o más nuevo, PostgreSQL (yo usé la 18) y Git.
 
-- [Node.js](https://nodejs.org/) 20 o más nuevo
-- [PostgreSQL](https://www.postgresql.org/download/) (yo usé la versión 18)
-- Git
-
-### 1. Clonar el repo e instalar dependencias
+**1. Clonar e instalar**
 
 ```bash
 git clone https://github.com/rodrigoromero01/api-miniblog.git
@@ -179,76 +124,57 @@ cd api-miniblog
 npm install
 ```
 
-### 2. Crear las bases de datos
-
-Una para desarrollo y otra solo para los tests:
+**2. Crear las bases de datos.** Uso dos: una para trabajar y otra solo para los tests (porque los tests borran todo antes de correr).
 
 ```bash
 psql -U postgres -c "CREATE DATABASE miniblog;"
 psql -U postgres -c "CREATE DATABASE miniblog_test;"
 ```
 
-### 3. Configurar las variables de entorno
-
-Copiar `.env.example` como `.env` y completar con tu usuario y contraseña de PostgreSQL:
-
-```bash
-cp .env.example .env
-```
+**3. Armar el `.env`.** Copiá `.env.example` como `.env` y poné tu usuario y contraseña de Postgres:
 
 ```env
-# PORT
 PORT=3000
-
-# POSTGRES
-# formato: postgresql://usuario:password@host:puerto/nombre_db
 DATABASE_URL=postgresql://postgres:tu_password@localhost:5432/miniblog
-
-# base de datos solo para los tests (se borra en cada test, NO usar la misma que DATABASE_URL)
 TEST_DATABASE_URL=postgresql://postgres:tu_password@localhost:5432/miniblog_test
 ```
 
-> El archivo `.env` está en el `.gitignore`, nunca se sube a GitHub.
+El `.env` está en el `.gitignore`, no se sube a GitHub.
 
-### 4. Crear las tablas y cargar los datos de ejemplo
+**4. Crear las tablas y cargar los datos de ejemplo**
 
 ```bash
 psql -U postgres -d miniblog -f src/db/setup.sql
 psql -U postgres -d miniblog -f src/db/seed.sql
 
-# la base de tests solo necesita las tablas (los datos los cargan los tests)
+# a la base de tests solo le hacen falta las tablas
 psql -U postgres -d miniblog_test -f src/db/setup.sql
 ```
 
-Esto crea 3 autores y 5 posts. Para comprobar que la app se conecta bien:
+Eso carga 3 autores y 5 posts. Para ver si la app se conecta bien:
 
 ```bash
 npm run db:test
-# ✅ Conectado! Hora del servidor: ...
-# Autores: 3 | Posts: 5
+# ✅ Conectado! ... Autores: 3 | Posts: 5
 ```
 
-> `setup.sql` empieza con `DROP TABLE IF EXISTS`, así que correrlo de nuevo deja la base vacía. Sirve para "resetear" la base.
+Si querés dejar la base como al principio, volvé a correr `setup.sql` y `seed.sql` (el setup borra las tablas y las crea de nuevo).
 
-### 5. Levantar el servidor
+**5. Levantar el servidor**
 
 ```bash
-npm run dev     # con --watch, se reinicia solo al guardar cambios
-# o
-npm start
+npm run dev    # se reinicia solo cuando guardás cambios
 ```
 
-La API queda en `http://localhost:3000`. Para probar: `http://localhost:3000/health` → `{ "status": "ok" }`
+Queda en `http://localhost:3000`. Probá `http://localhost:3000/health` y tiene que devolver `{ "status": "ok" }`.
 
-### Scripts disponibles
+**Scripts:**
 
-| Comando | Qué hace |
-|---|---|
-| `npm start` | Levanta el servidor |
-| `npm run dev` | Levanta el servidor y lo reinicia al guardar cambios |
-| `npm test` | Corre todos los tests una vez |
-| `npm run test:watch` | Deja los tests corriendo mientras programo |
-| `npm run db:test` | Prueba la conexión a la base de datos |
+- `npm start` → levanta el servidor
+- `npm run dev` → lo levanta y lo reinicia al guardar
+- `npm test` → corre los tests
+- `npm run test:watch` → deja los tests corriendo mientras programás
+- `npm run db:test` → prueba la conexión a la base
 
 ---
 
@@ -263,132 +189,86 @@ npm test
       Tests  44 passed (44)
 ```
 
-- `tests/authors.test.js` → endpoints de autores (15 tests)
-- `tests/posts.test.js` → endpoints de posts, `/health` y rutas inexistentes (17 tests)
-- `tests/validators.test.js` → tests unitarios de las funciones de validación (12 tests)
+- `tests/authors.test.js` → endpoints de autores
+- `tests/posts.test.js` → endpoints de posts, `/health` y una ruta que no existe
+- `tests/validators.test.js` → las funciones de validación solas
 
-Los tests de endpoints usan **supertest** contra la app real y la base `miniblog_test`. Antes de cada test se vacían las tablas con `TRUNCATE ... RESTART IDENTITY CASCADE` y se cargan los mismos 3 autores y 5 posts del seed, así cada test arranca con los mismos datos y no depende de los demás.
-
-> Los tests **no tocan** la base de desarrollo: `vitest.config.js` reemplaza `DATABASE_URL` por `TEST_DATABASE_URL`. Si esa variable falta en el `.env`, los tests fallan con un error de conexión.
+Los tests de endpoints usan supertest contra la app y la base `miniblog_test`. Antes de cada test vacío las tablas con `TRUNCATE ... RESTART IDENTITY CASCADE` y cargo los mismos datos del seed, así todos arrancan igual. En `vitest.config.js` cambio `DATABASE_URL` por `TEST_DATABASE_URL`, así nunca tocan la base con la que trabajo.
 
 ---
 
-## Documentación OpenAPI
+## Documentación (OpenAPI / Swagger)
 
-La documentación está en [`src/docs/openapi.yaml`](src/docs/openapi.yaml) y se puede ver con Swagger UI:
+La documentación está en [`src/docs/openapi.yaml`](src/docs/openapi.yaml). Con el servidor corriendo, entrá a:
 
-```bash
-npm run dev
-```
+- Local: http://localhost:3000/api-docs
+- Online: https://api-miniblog.onrender.com/api-docs
 
-Abrir **http://localhost:3000/api-docs**. Ahí están todos los endpoints con sus parámetros, ejemplos y respuestas, y se pueden probar con el botón **"Try it out"**.
+Ahí están todos los endpoints con ejemplos, y se pueden probar con el botón **"Try it out"**. Arriba se puede elegir si probar contra local o contra Render.
 
 ---
 
-## Deploy en Render
+## Deploy
 
-> **¿Por qué Render y no Railway?** La consigna pide Railway, pero cuando quise crear el proyecto el período de prueba gratis de mi cuenta ya había vencido (`Your trial has expired. Please select a plan to continue using Railway.`). Por eso hice el deploy en **Render**, que funciona de la misma forma: toma el código de GitHub, lo instala, lo arranca y le da una base PostgreSQL. El código no cambia nada, solo dónde se publica.
+La consigna pedía Railway, pero cuando fui a crear el proyecto mi período de prueba ya estaba vencido (me salía `Your trial has expired. Please select a plan to continue using Railway.`). Consulté y me dejaron usar **Render**, que funciona parecido: agarra el código de GitHub, lo instala, lo arranca y te da una base PostgreSQL.
 
-### URLs
+**URLs:**
 
-| Qué | URL |
-|---|---|
-| API (URL pública) | https://api-miniblog.onrender.com |
-| Health check | https://api-miniblog.onrender.com/health |
-| Documentación Swagger | https://api-miniblog.onrender.com/api-docs |
+- URL pública de la API: https://api-miniblog.onrender.com
+- Health check: https://api-miniblog.onrender.com/health
+- Swagger: https://api-miniblog.onrender.com/api-docs
 
-### Cómo está armado
+**Cómo lo hice:**
 
-El deploy está definido en el archivo [`render.yaml`](render.yaml) (un *Blueprint* de Render), que crea dos cosas:
-
-1. **`api-miniblog`** → un *Web Service* de Node.js (plan free).
-   - Build: `npm install`
-   - Start: `npm start`
-   - Health check: `/health` (Render lo usa para saber si la app levantó bien)
-2. **`miniblog-db`** → una base **PostgreSQL** (plan free), con base `miniblog` y usuario `miniblog`.
-
-```
-GitHub (código) ──git push──▶ Render
-                               ├── api-miniblog (Node + Express)
-                               │        │ URL interna
-                               │        ▼
-                               └── miniblog-db (PostgreSQL)
-```
-
-### Variables de entorno
-
-| Variable | Dónde se configura | Valor |
-|---|---|---|
-| `DATABASE_URL` | La pone Render sola (sale del `render.yaml` con `fromDatabase`) | La **URL interna** de `miniblog-db` |
-| `PORT` | La pone Render sola | El puerto donde tiene que escuchar la app |
-
-No hace falta cargar nada a mano: el código ya usa `process.env.DATABASE_URL` y `process.env.PORT`.
-
-### URL interna vs URL externa de la base
-
-Render da dos URLs para la misma base (se ven en **miniblog-db → Connect**):
-
-- **Internal Database URL** → solo funciona **dentro de Render**. Es la que usa la API para conectarse: es más rápida y no pasa por internet. Es la que va en `DATABASE_URL`.
-- **External Database URL** → sirve para conectarse **desde afuera**, por ejemplo desde mi PC con `psql` o pgAdmin. La usé solo para crear las tablas. Necesita SSL (`?sslmode=require`).
-
-> Ninguna de las dos URLs se sube a GitHub porque tienen la contraseña de la base.
-
-### Pasos que seguí
-
-1. Subí el archivo `render.yaml` al repositorio.
-2. En https://dashboard.render.com: **New → Blueprint**, conecté GitHub y elegí el repo `api-miniblog`.
-3. Render leyó el `render.yaml`, mostró los dos recursos y le di **Deploy Blueprint**.
-4. Cuando la API levantó, `/health` respondía bien pero `/authors` daba 500, porque la base de Render estaba vacía.
-5. Copié la **External Database URL** de `miniblog-db` y corrí los scripts desde mi PC:
+1. Agregué al repo el archivo [`render.yaml`](render.yaml), que le dice a Render que cree dos cosas: el servicio de la API (`npm install` para instalar, `npm start` para arrancar y `/health` para chequear que levantó) y una base PostgreSQL (`miniblog-db`).
+2. En el dashboard de Render: **New → Blueprint**, elegí el repo y le di a deploy.
+3. La API levantó, pero `/authors` daba error 500 porque la base de Render estaba vacía.
+4. Copié la **External Database URL** de la base y corrí los scripts desde mi PC:
 
    ```bash
    psql "<External Database URL>?sslmode=require" -f src/db/setup.sql
    psql "<External Database URL>?sslmode=require" -f src/db/seed.sql
    ```
 
-6. Probé todos los endpoints contra la URL pública y dieron los mismos resultados que en local. Después volví a correr `setup.sql` y `seed.sql` para dejar los datos de ejemplo.
+5. Probé todos los endpoints contra la URL pública y anduvieron igual que en local.
 
-Cada vez que hago `git push` a `main`, Render vuelve a hacer el deploy automáticamente.
+Cada vez que hago `git push` a `main`, Render vuelve a deployar solo.
 
-### Limitaciones del plan gratis
+**Variables de entorno en Render:**
 
-- La API se duerme después de 15 minutos sin uso; el primer request después de eso tarda alrededor de un minuto.
-- La base PostgreSQL gratis **vence a los 30 días** de creada (después hay 14 días de gracia y se borra). Si vence, se puede crear una nueva y volver a correr `setup.sql` y `seed.sql`.
+- `DATABASE_URL` → la completa Render sola con la URL interna de la base (lo configura el `render.yaml`).
+- `PORT` → también la pone Render. Mi código ya usa `process.env.PORT`.
+
+**URL interna vs URL externa de la base:**
+
+- La **Internal Database URL** solo funciona adentro de Render. Es la que usa la API, porque es más rápida y no sale a internet.
+- La **External Database URL** sirve para conectarse desde afuera, por ejemplo desde mi PC con `psql` o pgAdmin. La usé solo para crear las tablas. Pide SSL (`?sslmode=require`).
+
+Ninguna de las dos está en el repo porque tienen la contraseña.
+
+**Cosas a tener en cuenta del plan gratis:** la API se duerme a los 15 minutos sin uso, y la base gratis vence a los 30 días de creada. Si vence, hay que crear otra y volver a correr `setup.sql` y `seed.sql`.
 
 ---
 
 ## Registro del uso de IA
 
-> ✏️ _Borrador: revisar y completar con mis palabras antes de entregar._
+<!-- COMPLETAR CON MIS PALABRAS ANTES DE ENTREGAR -->
 
-### Herramienta usada
+**Herramienta:** usé **Claude Code**, un asistente de IA que trabaja en la terminal y puede leer y escribir los archivos del proyecto.
 
-Usé **Claude Code** (un asistente de IA que trabaja en la terminal y puede leer y escribir archivos del proyecto) como apoyo durante todo el desarrollo.
+**Cómo la usé:** fui avanzando paso a paso en el orden que recomienda la guía. Le pedía cada paso, Claude Code escribía el código y lo probaba, y yo revisaba lo que había hecho antes de pasar al siguiente. Cada paso quedó en un commit y anotado en [`BITACORA.md`](BITACORA.md).
 
-### Cómo lo usé
+**Prompts principales que usé:**
 
-Trabajé paso a paso, siguiendo el orden que recomienda la guía del proyecto. En cada paso le pedía que avance, revisaba lo que había hecho, lo probaba y recién ahí seguía con el siguiente. Cada paso quedó en un commit separado y documentado en [`BITACORA.md`](BITACORA.md).
+- Le pasé la consigna y le pedí que la leyera y me propusiera cómo arrancar.
+- Le pasé el repo con los ejemplos de clase para que siguiera esa misma estructura.
+- "Seguí con el paso N" para cada parte del proyecto.
+- _[completar: otros prompts que me acuerde, por ejemplo cuando no me acordaba la contraseña de Postgres o cuando cambiamos a Render]_
 
-### Prompts principales
+**Qué decidí yo:**
 
-| Momento | Prompt (resumido) | Cómo influyó |
-|---|---|---|
-| Inicio | _"Te dejo el link de la consigna, leela, tomá el contexto y proponeme cómo comenzamos. Tiene que quedar como el desarrollo de un junior principiante e ir documentando cada paso."_ | Leyó la consigna, el entregable y la guía, y propuso un plan de 8 pasos siguiendo el orden de la guía (SQL → arrays en memoria → PostgreSQL → validaciones → tests → OpenAPI → deploy). |
-| Referencia | _"Chequeá también este repo donde se hicieron los ejemplos de clase, tenelo como ejemplo."_ | Revisó el repo de las clases y adaptó el proyecto a esa misma estructura y estilo (ES Modules, `config.js` con `Pool`, `errors.js`, `errorHandler`, vitest + supertest, Swagger con yamljs). |
-| Cada paso | _"Seguí con el paso N"_ | Generó el código de cada paso, lo probó con requests reales y documentó el resultado en la bitácora. |
-| Problema con PostgreSQL | No me acordaba la contraseña del usuario `postgres`. | Me explicó cómo resetearla editando temporalmente `pg_hba.conf`, y cuando cambié las líneas equivocadas (las de `replication`) detectó el error revisando el archivo. |
-| Tests | Usar una base aparte para los tests. | Propuso crear `miniblog_test` porque los tests borran las tablas, para no perder los datos de desarrollo. |
-| GitHub | _"Creá el repo, que quede público."_ | Antes de subir revisó que el `.env` y la contraseña no estuvieran en ningún commit. |
-| Deploy | Intentar el deploy en Railway. | Al crear el proyecto Railway respondió que mi trial había vencido. Me explicó las opciones y decidí pasar a Render. |
-| Deploy | _"Cambio de planes, vamos a deployar en Render."_ | Armó el `render.yaml` (API + PostgreSQL), me explicó las limitaciones del plan gratis, corrió los scripts SQL en la base de Render y probó todos los endpoints en producción. |
+- _[completar: por ejemplo usar una base aparte para los tests, pasar a Render cuando Railway no me dejó, qué partes simplificar]_
 
-### Qué aprendí / qué verifiqué yo
+**Qué aprendí:**
 
-- Revisé que la estructura fuera la misma que vimos en clase y que entiendo cada capa (routes, controllers, services).
-- Probé los endpoints y corrí los tests en mi máquina.
-- Cosas que entendí gracias a los problemas que aparecieron:
-  - En Express el orden de las rutas importa: se usa la primera que coincide. Un parámetro como `/:id` atrapa un solo tramo de la URL, así que tomaría `/posts/author` como si `author` fuera un id, pero no `/posts/author/1`.
-  - En Express 5, si no viene body, `req.body` es `undefined`.
-  - Los códigos de error de PostgreSQL (`23505` = UNIQUE, `23503` = FOREIGN KEY) se pueden usar para responder 409 y 404.
-  - Las consultas tienen que ser parametrizadas (`$1`, `$2`) para evitar SQL injection.
-  - Para los tests conviene una base separada.
+- _[completar con mis palabras. Ideas: por qué las consultas van con `$1`, `$2`; qué hace `ON DELETE CASCADE`; por qué un email repetido es 409 y no 400; para qué sirve el `errorHandler`; la diferencia entre URL interna y externa]_
