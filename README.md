@@ -136,17 +136,15 @@ Ninguna URL de la base está en el repo porque tienen la contraseña. La base gr
 
 ## Registro del uso de IA
 
-<!-- COMPLETAR CON MIS PALABRAS ANTES DE ENTREGAR -->
 
-Usé **Claude Code**, un asistente de IA que trabaja en la terminal y puede leer y escribir los archivos del proyecto. Fui avanzando paso a paso en el orden de la guía: le pedía cada paso, Claude Code escribía el código y lo probaba, y yo revisaba antes de seguir. Cada paso quedó en un commit y en [`BITACORA.md`](BITACORA.md).
+Usé **Claude**,como asistente de IA. Fui avanzando paso a paso en el orden de la guía: le pedía cada paso que me corrija o me ayude, yo revisaba antes de seguir. Cada paso quedó en un commit y en [`BITACORA.md`](BITACORA.md).
 
 **Prompts principales:**
 
 - Le pasé la consigna y le pedí que me propusiera cómo arrancar.
-- Le pasé el repo de los ejemplos de clase para que siguiera esa estructura.
 - "Seguí con el paso N" para cada parte.
-- _[completar: otros prompts que me acuerde]_
+- Le pedia que revise mi sintaxis e identación.
+- Que me explique lo que no entendia.
+- Finalmente me haga un mapa conceptual de todo terminado para cerrar la idea.
 
-**Qué decidí yo:** _[completar: por ejemplo la base aparte para los tests, pasar a Render, qué simplificar]_
-
-**Qué aprendí:** _[completar con mis palabras: por ejemplo `$1`/`$2` contra SQL injection, `ON DELETE CASCADE`, 409 vs 400, el `errorHandler`, URL interna vs externa]_
+*
