@@ -288,3 +288,24 @@ Decidí hacer el deploy en **Render**, que tiene plan gratis.
 **URL pública:** https://api-miniblog.onrender.com
 
 **Limitaciones del plan gratis:** la API se duerme después de 15 minutos sin uso y la base gratis vence a los 30 días.
+
+---
+
+## Paso 10 - Revisión y limpieza
+
+Releí todo el código comparándolo con los ejemplos de clase y simplifiqué dos cosas:
+
+**1. Tests más simples (como en clase)**
+
+- Antes tenía un `tests/helpers.js` que leía `setup.sql` y `seed.sql` con `fs.readFileSync` y los corría antes de cada test. Lo borré.
+- Ahora cada archivo de test hace en el `beforeEach` lo mismo que el ejemplo de clase: `TRUNCATE authors RESTART IDENTITY CASCADE` y después los `INSERT` con los datos del seed.
+  - `RESTART IDENTITY` vuelve los ids a 1, así los tests pueden usar `/authors/1`.
+  - `CASCADE` vacía también `posts`, porque depende de `authors`.
+- Como `TRUNCATE` no crea las tablas, a la base `miniblog_test` hay que correrle `setup.sql` una vez (lo agregué al README).
+- En `vitest.config.js` saqué el `throw` que frenaba los tests si faltaba `TEST_DATABASE_URL`. Probé qué pasa sin esa variable: los tests fallan con error de conexión y la base de desarrollo no se toca, así que no hacía falta.
+
+**2. Saqué código que nunca se ejecutaba**
+
+- En el `errorHandler` traducía el error `22P02` de Postgres (dato con formato inválido, por ejemplo un id `"abc"`). Pero `validarId` ya frena esos casos con un 400 antes de llegar a la base, así que ese `if` nunca se usaba. Lo borré.
+
+**Pruebas:** `npm test` → 44 de 44, y las pruebas de endpoints dan los mismos códigos que antes.

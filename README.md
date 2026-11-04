@@ -215,6 +215,9 @@ TEST_DATABASE_URL=postgresql://postgres:tu_password@localhost:5432/miniblog_test
 ```bash
 psql -U postgres -d miniblog -f src/db/setup.sql
 psql -U postgres -d miniblog -f src/db/seed.sql
+
+# la base de tests solo necesita las tablas (los datos los cargan los tests)
+psql -U postgres -d miniblog_test -f src/db/setup.sql
 ```
 
 Esto crea 3 autores y 5 posts. Para comprobar que la app se conecta bien:
@@ -264,9 +267,9 @@ npm test
 - `tests/posts.test.js` → endpoints de posts, `/health` y rutas inexistentes (17 tests)
 - `tests/validators.test.js` → tests unitarios de las funciones de validación (12 tests)
 
-Los tests de endpoints usan **supertest** contra la app real y la base `miniblog_test`. Antes de cada test se corren `setup.sql` y `seed.sql`, así cada test arranca con los mismos datos y no depende de los demás.
+Los tests de endpoints usan **supertest** contra la app real y la base `miniblog_test`. Antes de cada test se vacían las tablas con `TRUNCATE ... RESTART IDENTITY CASCADE` y se cargan los mismos 3 autores y 5 posts del seed, así cada test arranca con los mismos datos y no depende de los demás.
 
-> Los tests **no tocan** la base de desarrollo: `vitest.config.js` reemplaza `DATABASE_URL` por `TEST_DATABASE_URL`, y si esa variable no existe no corre nada.
+> Los tests **no tocan** la base de desarrollo: `vitest.config.js` reemplaza `DATABASE_URL` por `TEST_DATABASE_URL`. Si esa variable falta en el `.env`, los tests fallan con un error de conexión.
 
 ---
 
